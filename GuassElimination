@@ -1,0 +1,70 @@
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+func parallelGauss(a [][]float64, b []float64) ([]float64, error) {
+	n := len(b)
+	if n == 0 || len(a) != n || len(a[0]) != n {
+		return nil, fmt.Errorf("invalid matrix dimensions")
+	}
+
+	// 前向消元
+	for i := 0; i < n; i++ {
+		pivot := a[i][i]
+		if pivot == 0 {
+			return nil, fmt.Errorf("zero pivot at row %d", i)
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(n - i - 1)
+
+		// 消去下方行的当前列
+		for j := i + 1; j < n; j++ {
+			go func(j int) {
+				defer wg.Done()
+				factor := a[j][i] / pivot
+				for k := i; k < n; k++ {
+					a[j][k] -= factor * a[i][k]
+				}
+				b[j] -= factor * b[i]
+			}(j)
+		}
+		wg.Wait()
+	}
+
+	// 回代求解
+	x := make([]float64, n)
+	for i := n - 1; i >= 0; i-- {
+		sum := 0.0
+		for j := i + 1; j < n; j++ {
+			sum += a[i][j] * x[j]
+		}
+		x[i] = (b[i] - sum) / a[i][i]
+	}
+
+	return x, nil
+}
+
+func main() {
+	// 测试方程组 (解为 x=2, y=3, z=-1)
+	a := [][]float64{
+		{2.0, 1.0, -1.0},
+		{-3.0, -1.0, 2.0},
+		{-2.0, 1.0, 2.0},
+	}
+	b := []float64{8.0, -11.0, -3.0}
+
+	solution, err := parallelGauss(a, b)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	fmt.Printf("Solution:\n")
+	for i, val := range solution {
+		fmt.Printf("x%d = %.2f\n", i+1, val)
+	}
+}
