@@ -1,0 +1,36 @@
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from PIL import Image
+from io import BytesIO
+import uvicorn
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.post("/image-info/")
+async def get_image_info(file: UploadFile = File(...)):
+try:
+    image = Image.open(BytesIO(await file.read()))
+return {
+    "name": file.filename,
+    "size": image.size,
+    "format": image.format,
+    "color_mode": image.mode
+}
+except Exception as e:
+    raise HTTPException(status_code=400, detail=str(e))
+finally:
+    await file.close()
+
+@app.get("/ping")
+def health_check():
+    return {"status": "active"}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
