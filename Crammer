@@ -1,0 +1,83 @@
+package main
+
+import (
+	"fmt"
+	"math"
+)
+
+// 计算矩阵行列式（递归实现）
+func determinant(mat [][]float64) float64 {
+	n := len(mat)
+	if n == 1 {
+		return mat[0][0]
+	}
+
+	det := 0.0
+	sign := 1.0
+
+	for i := 0; i < n; i++ {
+		submat := make([][]float64, n-1)
+		for j := 1; j < n; j++ {
+			submat[j-1] = append([]float64{}, mat[j][:i]...)
+			submat[j-1] = append(submat[j-1], mat[j][i+1:]...)
+		}
+		det += sign * mat[0][i] * determinant(submat)
+		sign *= -1
+	}
+
+	return det
+}
+
+// 生成替换指定列的矩阵
+func replaceColumn(a [][]float64, b []float64, col int) [][]float64 {
+	n := len(a)
+	copyMat := make([][]float64, n)
+	for i := range a {
+		copyMat[i] = append([]float64{}, a[i]...)
+		copyMat[i][col] = b[i]
+	}
+	return copyMat
+}
+
+// Cramer法则解线性方程组
+func cramerSolve(a [][]float64, b []float64) ([]float64, error) {
+	n := len(b)
+	if n == 0 || len(a) != n || len(a[0]) != n {
+		return nil, fmt.Errorf("invalid matrix dimensions")
+	}
+
+	detA := determinant(a)
+	if math.Abs(detA) < 1e-9 {
+		return nil, fmt.Errorf("singular matrix (det=%.4f)", detA)
+	}
+
+	x := make([]float64, n)
+	for i := 0; i < n; i++ {
+		modified := replaceColumn(a, b, i)
+		det := determinant(modified)
+		x[i] = det / detA
+	}
+
+	return x, nil
+}
+
+func main() {
+	// 测试方程组 (解为 x=2, y=3, z=-1)
+	a := [][]float64{
+		{2.0, 1.0, -1.0},
+		{-3.0, -1.0, 2.0},
+		{-2.0, 1.0, 2.0},
+	}
+	b := []float64{8.0, -11.0, -3.0}
+
+	solution, err := cramerSolve(a, b)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	fmt.Printf("Solution:\n")
+	for i, val := range solution {
+		fmt.Printf("x%d = %.2f\n", i+1, val)
+	}
+}
